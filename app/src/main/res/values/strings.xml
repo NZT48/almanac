@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Almanac</string>
+    <string name="permissions_rationale">Almanac exports your steps, weight, and sleep from Health Connect to a local file in Downloads.</string>
+</resources>

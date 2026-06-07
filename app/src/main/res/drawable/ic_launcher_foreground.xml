@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive icon foreground. The artwork lives in drawable-nodpi/almanac_logo.png.
+    The 18dp inset keeps the logo inside the 72dp safe zone of the 108dp foreground
+    layer so launchers that mask with a circle/squircle don't clip the A.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:left="18dp"
+        android:top="18dp"
+        android:right="18dp"
+        android:bottom="18dp">
+        <bitmap
+            android:src="@drawable/almanac_logo"
+            android:gravity="fill" />
+    </item>
+</layer-list>
