@@ -10,9 +10,11 @@ import com.example.almanac.data.notion.NotionApi
 import com.example.almanac.data.notion.NotionCredentialsStore
 import com.example.almanac.data.notion.NotionPhysicalRepository
 import com.example.almanac.data.notion.NotionSource
+import com.example.almanac.data.notion.PhysicalEntryWriter
 import com.example.almanac.data.settings.SettingsRepository
 import com.example.almanac.domain.usecase.ExportDataUseCase
 import com.example.almanac.domain.usecase.ReadHealthDataUseCase
+import com.example.almanac.domain.usecase.SuggestPhysicalEntryUseCase
 
 class AlmanacApplication : Application() {
     lateinit var container: AppContainer
@@ -51,9 +53,13 @@ class AppContainer(private val context: Context) {
     val notionPhysicalRepository: NotionPhysicalRepository by lazy {
         NotionPhysicalRepository(notionApi)
     }
+    val physicalEntryWriter: PhysicalEntryWriter by lazy { PhysicalEntryWriter(notionApi) }
 
     val readUseCase: ReadHealthDataUseCase? by lazy {
         source?.let { ReadHealthDataUseCase(it) }
     }
     val exportUseCase: ExportDataUseCase by lazy { ExportDataUseCase(sink) }
+    val suggestUseCase: SuggestPhysicalEntryUseCase? by lazy {
+        source?.let { SuggestPhysicalEntryUseCase(it) }
+    }
 }

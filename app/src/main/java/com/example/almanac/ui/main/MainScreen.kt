@@ -58,6 +58,7 @@ import java.util.Locale
 fun MainScreen(
     onOpenSettings: () -> Unit,
     onOpenPhysicalEntries: () -> Unit,
+    onOpenNewEntry: () -> Unit,
     viewModel: MainViewModel = viewModel(factory = MainViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -128,6 +129,13 @@ fun MainScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Browse Notion entries")
+            }
+
+            OutlinedButton(
+                onClick = onOpenNewEntry,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("New Notion entry")
             }
 
             when (val s = uiState) {

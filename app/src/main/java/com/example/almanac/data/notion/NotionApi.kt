@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -48,6 +49,19 @@ class NotionApi(
         val request = baseRequest(apiKey)
             .url("$BASE_URL/databases/$dbId")
             .get()
+            .build()
+        return execute(request)
+    }
+
+    suspend fun createPage(properties: JsonObject): NotionResult<JsonObject> {
+        val (apiKey, dbId) = resolveCreds() ?: return NotionResult.Failure(NotionError.MissingCredentials)
+        val bodyJson = buildJsonObject {
+            putJsonObject("parent") { put("database_id", dbId) }
+            put("properties", properties)
+        }.toString()
+        val request = baseRequest(apiKey)
+            .url("$BASE_URL/pages")
+            .post(bodyJson.toRequestBody(JSON_MEDIA))
             .build()
         return execute(request)
     }
@@ -116,13 +130,18 @@ class NotionApi(
                                     NotionResult.Failure(NotionError.Unexpected("Malformed Notion response."))
                                 },
                             )
+                        400 -> NotionResult.Failure(
+                            NotionError.Unexpected(notionMessage(bodyString) ?: "Notion rejected the request."),
+                        )
                         401 -> NotionResult.Failure(NotionError.Unauthorized)
                         404 -> NotionResult.Failure(NotionError.NotFound)
                         429 -> NotionResult.Failure(
                             NotionError.RateLimited(resp.header("Retry-After")?.toIntOrNull()),
                         )
                         else -> NotionResult.Failure(
-                            NotionError.Unexpected("Notion returned ${resp.code}."),
+                            NotionError.Unexpected(
+                                notionMessage(bodyString) ?: "Notion returned ${resp.code}.",
+                            ),
                         )
                     }
                 }
@@ -130,6 +149,10 @@ class NotionApi(
                 NotionResult.Failure(NotionError.Network(e.message ?: "Network failure."))
             }
         }
+
+    private fun notionMessage(body: String): String? = runCatching {
+        json.parseToJsonElement(body).jsonObject["message"]?.jsonPrimitive?.contentOrNull
+    }.getOrNull()
 
     companion object {
         const val BASE_URL = "https://api.notion.com/v1"
