@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.almanac.ui.main.MainScreen
 import com.example.almanac.ui.main.MainViewModel
+import com.example.almanac.ui.physical.PhysicalEntriesScreen
 import com.example.almanac.ui.settings.SettingsScreen
 import com.example.almanac.ui.theme.AlmanacTheme
 
@@ -34,11 +35,15 @@ class MainActivity : ComponentActivity() {
                     composable("main") {
                         MainScreen(
                             onOpenSettings = { navController.navigate("settings") },
+                            onOpenPhysicalEntries = { navController.navigate("physical_entries") },
                             viewModel = mainViewModel,
                         )
                     }
                     composable("settings") {
                         SettingsScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable("physical_entries") {
+                        PhysicalEntriesScreen(onBack = { navController.popBackStack() })
                     }
                 }
             }

@@ -8,6 +8,7 @@ import com.example.almanac.data.file.WeeklyDigestFormatter
 import com.example.almanac.data.healthconnect.HealthConnectSource
 import com.example.almanac.data.notion.NotionApi
 import com.example.almanac.data.notion.NotionCredentialsStore
+import com.example.almanac.data.notion.NotionPhysicalRepository
 import com.example.almanac.data.notion.NotionSource
 import com.example.almanac.data.settings.SettingsRepository
 import com.example.almanac.domain.usecase.ExportDataUseCase
@@ -47,6 +48,9 @@ class AppContainer(private val context: Context) {
     }
     val notionApi: NotionApi by lazy { NotionApi(notionCredentials) }
     val notionSource: NotionSource by lazy { NotionSource(notionApi) }
+    val notionPhysicalRepository: NotionPhysicalRepository by lazy {
+        NotionPhysicalRepository(notionApi)
+    }
 
     val readUseCase: ReadHealthDataUseCase? by lazy {
         source?.let { ReadHealthDataUseCase(it) }

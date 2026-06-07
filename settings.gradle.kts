@@ -1,4 +1,4 @@
-gapluginManagement {
+pluginManagement {
     repositories {
         google {
             content {

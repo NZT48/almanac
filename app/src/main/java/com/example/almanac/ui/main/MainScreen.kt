@@ -57,6 +57,7 @@ import java.util.Locale
 @Composable
 fun MainScreen(
     onOpenSettings: () -> Unit,
+    onOpenPhysicalEntries: () -> Unit,
     viewModel: MainViewModel = viewModel(factory = MainViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -120,6 +121,13 @@ fun MainScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(if (uiState is MainUiState.Done) "Re-export" else "Export")
+            }
+
+            OutlinedButton(
+                onClick = onOpenPhysicalEntries,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Browse Notion entries")
             }
 
             when (val s = uiState) {

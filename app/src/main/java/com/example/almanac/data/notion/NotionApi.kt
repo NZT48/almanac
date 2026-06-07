@@ -5,12 +5,14 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -50,7 +52,7 @@ class NotionApi(
         return execute(request)
     }
 
-    suspend fun queryAllRows(): NotionResult<List<JsonObject>> {
+    suspend fun queryAllRows(sortNewestFirst: Boolean = false): NotionResult<List<JsonObject>> {
         val (apiKey, dbId) = resolveCreds() ?: return NotionResult.Failure(NotionError.MissingCredentials)
         val rows = mutableListOf<JsonObject>()
         var cursor: String? = null
@@ -58,6 +60,16 @@ class NotionApi(
             val bodyJson = buildJsonObject {
                 put("page_size", 100)
                 cursor?.let { put("start_cursor", it) }
+                if (sortNewestFirst) {
+                    putJsonArray("sorts") {
+                        add(
+                            buildJsonObject {
+                                put("timestamp", "created_time")
+                                put("direction", "descending")
+                            },
+                        )
+                    }
+                }
             }.toString()
             val request = baseRequest(apiKey)
                 .url("$BASE_URL/databases/$dbId/query")
