@@ -7,11 +7,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.almanac.ui.main.MainScreen
 import com.example.almanac.ui.main.MainViewModel
+import com.example.almanac.ui.newentry.EditEntryScreen
+import com.example.almanac.ui.newentry.EntryWizardViewModel
 import com.example.almanac.ui.newentry.NewEntryScreen
 import com.example.almanac.ui.physical.PhysicalEntriesScreen
 import com.example.almanac.ui.settings.SettingsScreen
@@ -45,10 +49,24 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(onBack = { navController.popBackStack() })
                     }
                     composable("physical_entries") {
-                        PhysicalEntriesScreen(onBack = { navController.popBackStack() })
+                        PhysicalEntriesScreen(
+                            onBack = { navController.popBackStack() },
+                            onEdit = { id -> navController.navigate("edit_entry/$id") },
+                        )
                     }
                     composable("new_entry") {
                         NewEntryScreen(
+                            onBack = { navController.popBackStack() },
+                            onSaved = { navController.popBackStack() },
+                        )
+                    }
+                    composable(
+                        route = "edit_entry/{${EntryWizardViewModel.ENTRY_ID_ARG}}",
+                        arguments = listOf(
+                            navArgument(EntryWizardViewModel.ENTRY_ID_ARG) { type = NavType.StringType },
+                        ),
+                    ) {
+                        EditEntryScreen(
                             onBack = { navController.popBackStack() },
                             onSaved = { navController.popBackStack() },
                         )

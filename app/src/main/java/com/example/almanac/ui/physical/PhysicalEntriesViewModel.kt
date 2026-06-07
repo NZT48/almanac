@@ -28,14 +28,29 @@ class PhysicalEntriesViewModel(
     fun load() {
         _state.value = PhysicalEntriesUiState.Loading
         viewModelScope.launch {
-            _state.value = when (val r = repository.loadLatestFirst()) {
-                is NotionResult.Failure -> PhysicalEntriesUiState.Error(r.error.message)
-                is NotionResult.Success -> if (r.value.isEmpty()) {
-                    PhysicalEntriesUiState.Empty
-                } else {
-                    PhysicalEntriesUiState.Loaded(entries = r.value, index = 0)
-                }
-            }
+            _state.value = resultState(repository.loadLatestFirst(), preserveId = null)
+        }
+    }
+
+    fun reloadPreservingCurrent() {
+        val currentId = (_state.value as? PhysicalEntriesUiState.Loaded)?.current?.id
+        viewModelScope.launch {
+            _state.value = resultState(repository.loadLatestFirst(), preserveId = currentId)
+        }
+    }
+
+    private fun resultState(
+        r: NotionResult<List<com.example.almanac.domain.model.PhysicalEntry>>,
+        preserveId: String?,
+    ): PhysicalEntriesUiState = when (r) {
+        is NotionResult.Failure -> PhysicalEntriesUiState.Error(r.error.message)
+        is NotionResult.Success -> if (r.value.isEmpty()) {
+            PhysicalEntriesUiState.Empty
+        } else {
+            val idx = preserveId?.let { id -> r.value.indexOfFirst { it.id == id } }
+                ?.takeIf { it >= 0 }
+                ?: 0
+            PhysicalEntriesUiState.Loaded(entries = r.value, index = idx)
         }
     }
 

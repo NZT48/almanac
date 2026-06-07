@@ -40,21 +40,22 @@ import com.example.almanac.domain.model.NewPhysicalEntryDraft
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewEntryScreen(
+fun EntryWizardScreen(
     onBack: () -> Unit,
     onSaved: () -> Unit,
-    viewModel: NewEntryViewModel = viewModel(factory = NewEntryViewModel.Factory),
+    viewModel: EntryWizardViewModel,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val editing = viewModel.isEditing
 
     LaunchedEffect(state) {
-        if (state is NewEntryUiState.Saved) onSaved()
+        if (state is EntryWizardUiState.Saved) onSaved()
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(topTitle(state)) },
+                title = { Text(topTitle(state, editing)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel")
@@ -70,14 +71,16 @@ fun NewEntryScreen(
                 .fillMaxSize(),
         ) {
             when (val s = state) {
-                is NewEntryUiState.PreparingSuggestions -> LoadingPanel("Reading Health Connect…")
-                is NewEntryUiState.Saving -> LoadingPanel("Saving to Notion…")
-                is NewEntryUiState.Saved -> LoadingPanel("Saved.")
-                is NewEntryUiState.Editing -> EditingPanel(s, viewModel)
-                is NewEntryUiState.Reviewing -> ReviewPanel(s.draft, viewModel)
-                is NewEntryUiState.SaveFailed -> ReviewPanel(
+                is EntryWizardUiState.PreparingSuggestions -> LoadingPanel("Reading Health Connect…")
+                is EntryWizardUiState.Saving -> LoadingPanel("Saving to Notion…")
+                is EntryWizardUiState.Saved -> LoadingPanel("Saved.")
+                is EntryWizardUiState.Unavailable -> UnavailablePanel(s.message, onBack)
+                is EntryWizardUiState.Editing -> EditingPanel(s, viewModel, editing)
+                is EntryWizardUiState.Reviewing -> ReviewPanel(s.draft, viewModel, editing)
+                is EntryWizardUiState.SaveFailed -> ReviewPanel(
                     s.draft,
                     viewModel,
+                    editing,
                     errorMessage = s.message,
                 )
             }
@@ -85,13 +88,30 @@ fun NewEntryScreen(
     }
 }
 
-private fun topTitle(state: NewEntryUiState): String = when (state) {
-    is NewEntryUiState.Editing -> "Step ${state.step.index} of ${NewEntryUiState.Step.TOTAL} — ${state.step.title}"
-    is NewEntryUiState.Reviewing,
-    is NewEntryUiState.SaveFailed -> "Review"
-    is NewEntryUiState.PreparingSuggestions -> "New Notion entry"
-    is NewEntryUiState.Saving -> "Saving…"
-    is NewEntryUiState.Saved -> "Saved"
+@Composable
+fun NewEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
+    val vm: EntryWizardViewModel = viewModel(factory = EntryWizardViewModel.CreateFactory)
+    EntryWizardScreen(onBack = onBack, onSaved = onSaved, viewModel = vm)
+}
+
+@Composable
+fun EditEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
+    val vm: EntryWizardViewModel = viewModel(factory = EntryWizardViewModel.EditFactory)
+    EntryWizardScreen(onBack = onBack, onSaved = onSaved, viewModel = vm)
+}
+
+private fun topTitle(state: EntryWizardUiState, editing: Boolean): String {
+    val prefix = if (editing) "Edit entry" else "New Notion entry"
+    return when (state) {
+        is EntryWizardUiState.Editing ->
+            "$prefix — Step ${state.step.index} of ${EntryWizardUiState.Step.TOTAL} — ${state.step.title}"
+        is EntryWizardUiState.Reviewing,
+        is EntryWizardUiState.SaveFailed -> if (editing) "Review changes" else "Review"
+        is EntryWizardUiState.PreparingSuggestions -> prefix
+        is EntryWizardUiState.Saving -> "Saving…"
+        is EntryWizardUiState.Saved -> "Saved"
+        is EntryWizardUiState.Unavailable -> prefix
+    }
 }
 
 @Composable
@@ -107,18 +127,37 @@ private fun LoadingPanel(text: String) {
 }
 
 @Composable
-private fun EditingPanel(state: NewEntryUiState.Editing, viewModel: NewEntryViewModel) {
+private fun UnavailablePanel(message: String, onBack: () -> Unit) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(top = 64.dp),
+    ) {
+        Text(message)
+        OutlinedButton(onClick = onBack) { Text("Back") }
+    }
+}
+
+@Composable
+private fun EditingPanel(
+    state: EntryWizardUiState.Editing,
+    viewModel: EntryWizardViewModel,
+    editing: Boolean,
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
         LinearProgressIndicator(
-            progress = { state.step.index.toFloat() / NewEntryUiState.Step.TOTAL },
+            progress = { state.step.index.toFloat() / EntryWizardUiState.Step.TOTAL },
             modifier = Modifier.fillMaxWidth(),
         )
 
         Text(
-            "Suggestions are based on the previous week (${state.draft.weekLabel}).",
+            if (editing) {
+                "Editing entry from ${state.draft.weekLabel}."
+            } else {
+                "Suggestions are based on the previous week (${state.draft.weekLabel})."
+            },
             style = MaterialTheme.typography.bodySmall,
         )
 
@@ -130,11 +169,11 @@ private fun EditingPanel(state: NewEntryUiState.Editing, viewModel: NewEntryView
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 when (state.step) {
-                    NewEntryUiState.Step.SLEEP -> SleepStep(state.draft, viewModel)
-                    NewEntryUiState.Step.ACTIVITY -> ActivityStep(state.draft, viewModel)
-                    NewEntryUiState.Step.BODY -> BodyStep(state.draft, viewModel)
-                    NewEntryUiState.Step.HABITS -> HabitsStep(state.draft, viewModel)
-                    NewEntryUiState.Step.CONTEXT -> ContextStep(state.draft, viewModel)
+                    EntryWizardUiState.Step.SLEEP -> SleepStep(state.draft, viewModel)
+                    EntryWizardUiState.Step.ACTIVITY -> ActivityStep(state.draft, viewModel)
+                    EntryWizardUiState.Step.BODY -> BodyStep(state.draft, viewModel)
+                    EntryWizardUiState.Step.HABITS -> HabitsStep(state.draft, viewModel)
+                    EntryWizardUiState.Step.CONTEXT -> ContextStep(state.draft, viewModel)
                 }
             }
         }
@@ -159,14 +198,14 @@ private fun EditingPanel(state: NewEntryUiState.Editing, viewModel: NewEntryView
 }
 
 @Composable
-private fun SleepStep(draft: NewPhysicalEntryDraft, vm: NewEntryViewModel) {
+private fun SleepStep(draft: NewPhysicalEntryDraft, vm: EntryWizardViewModel) {
     TextField("Avg sleep (e.g. 7h 58m)", draft.avgSleep) { v -> vm.updateDraft { it.copy(avgSleep = v) } }
     TextField("Bed time (HH:MM)", draft.bedTime) { v -> vm.updateDraft { it.copy(bedTime = v) } }
     TextField("Wake up (HH:MM)", draft.wakeUp) { v -> vm.updateDraft { it.copy(wakeUp = v) } }
 }
 
 @Composable
-private fun ActivityStep(draft: NewPhysicalEntryDraft, vm: NewEntryViewModel) {
+private fun ActivityStep(draft: NewPhysicalEntryDraft, vm: EntryWizardViewModel) {
     NumberField("Avg steps", draft.avgSteps?.toString().orEmpty()) { v ->
         vm.updateDraft { it.copy(avgSteps = v.toLongOrNull()) }
     }
@@ -176,14 +215,14 @@ private fun ActivityStep(draft: NewPhysicalEntryDraft, vm: NewEntryViewModel) {
 }
 
 @Composable
-private fun BodyStep(draft: NewPhysicalEntryDraft, vm: NewEntryViewModel) {
+private fun BodyStep(draft: NewPhysicalEntryDraft, vm: EntryWizardViewModel) {
     DecimalField("Weight (kg)", draft.weight?.toString().orEmpty()) { v ->
         vm.updateDraft { it.copy(weight = v.replace(',', '.').toDoubleOrNull()) }
     }
 }
 
 @Composable
-private fun HabitsStep(draft: NewPhysicalEntryDraft, vm: NewEntryViewModel) {
+private fun HabitsStep(draft: NewPhysicalEntryDraft, vm: EntryWizardViewModel) {
     NumberField("Flaster", draft.flaster?.toString().orEmpty()) { v ->
         vm.updateDraft { it.copy(flaster = v.toLongOrNull()) }
     }
@@ -196,7 +235,7 @@ private fun HabitsStep(draft: NewPhysicalEntryDraft, vm: NewEntryViewModel) {
 }
 
 @Composable
-private fun ContextStep(draft: NewPhysicalEntryDraft, vm: NewEntryViewModel) {
+private fun ContextStep(draft: NewPhysicalEntryDraft, vm: EntryWizardViewModel) {
     TextField("KPI (title)", draft.kpi) { v -> vm.updateDraft { it.copy(kpi = v) } }
     TextField("Week", draft.weekLabel) { v -> vm.updateDraft { it.copy(weekLabel = v) } }
     TextField("Sport", draft.sport) { v -> vm.updateDraft { it.copy(sport = v) } }
@@ -241,7 +280,8 @@ private fun DecimalField(label: String, value: String, onChange: (String) -> Uni
 @Composable
 private fun ReviewPanel(
     draft: NewPhysicalEntryDraft,
-    viewModel: NewEntryViewModel,
+    viewModel: EntryWizardViewModel,
+    editing: Boolean,
     errorMessage: String? = null,
 ) {
     Column(
@@ -301,7 +341,7 @@ private fun ReviewPanel(
             Button(
                 onClick = viewModel::save,
                 modifier = Modifier.weight(1f),
-            ) { Text("Save to Notion") }
+            ) { Text(if (editing) "Save changes" else "Save to Notion") }
         }
     }
 }

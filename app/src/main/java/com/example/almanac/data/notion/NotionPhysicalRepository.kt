@@ -11,11 +11,20 @@ import java.time.format.DateTimeParseException
 
 class NotionPhysicalRepository(private val api: NotionApi) {
 
+    private val cache = mutableMapOf<String, PhysicalEntry>()
+
     suspend fun loadLatestFirst(): NotionResult<List<PhysicalEntry>> =
         when (val r = api.queryAllRows(sortNewestFirst = true)) {
             is NotionResult.Failure -> r
-            is NotionResult.Success -> NotionResult.Success(r.value.mapNotNull(::toEntry))
+            is NotionResult.Success -> {
+                val entries = r.value.mapNotNull(::toEntry)
+                cache.clear()
+                entries.forEach { cache[it.id] = it }
+                NotionResult.Success(entries)
+            }
         }
+
+    fun cached(id: String): PhysicalEntry? = cache[id]
 
     private fun toEntry(page: JsonObject): PhysicalEntry? {
         val id = page["id"]?.jsonPrimitive?.contentOrNull ?: return null

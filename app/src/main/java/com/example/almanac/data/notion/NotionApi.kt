@@ -66,6 +66,16 @@ class NotionApi(
         return execute(request)
     }
 
+    suspend fun updatePage(pageId: String, properties: JsonObject): NotionResult<JsonObject> {
+        val apiKey = credentials.currentApiKey() ?: return NotionResult.Failure(NotionError.MissingCredentials)
+        val bodyJson = buildJsonObject { put("properties", properties) }.toString()
+        val request = baseRequest(apiKey)
+            .url("$BASE_URL/pages/$pageId")
+            .patch(bodyJson.toRequestBody(JSON_MEDIA))
+            .build()
+        return execute(request)
+    }
+
     suspend fun queryAllRows(sortNewestFirst: Boolean = false): NotionResult<List<JsonObject>> {
         val (apiKey, dbId) = resolveCreds() ?: return NotionResult.Failure(NotionError.MissingCredentials)
         val rows = mutableListOf<JsonObject>()

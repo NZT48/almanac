@@ -26,11 +26,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.almanac.domain.model.PhysicalEntry
@@ -39,9 +43,19 @@ import com.example.almanac.domain.model.PhysicalEntry
 @Composable
 fun PhysicalEntriesScreen(
     onBack: () -> Unit,
+    onEdit: (String) -> Unit,
     viewModel: PhysicalEntriesViewModel = viewModel(factory = PhysicalEntriesViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val firstResume = remember { mutableStateOf(true) }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (firstResume.value) {
+            firstResume.value = false
+        } else {
+            viewModel.reloadPreservingCurrent()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -70,6 +84,7 @@ fun PhysicalEntriesScreen(
                     state = s,
                     onPrevious = viewModel::previous,
                     onNext = viewModel::next,
+                    onEdit = { onEdit(s.current.id) },
                 )
             }
         }
@@ -118,6 +133,7 @@ private fun LoadedPanel(
     state: PhysicalEntriesUiState.Loaded,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onEdit: () -> Unit,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -158,6 +174,11 @@ private fun LoadedPanel(
                 modifier = Modifier.weight(1f),
             ) { Text("Next") }
         }
+
+        Button(
+            onClick = onEdit,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Edit this entry") }
     }
 }
 
